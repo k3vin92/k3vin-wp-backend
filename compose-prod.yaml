@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  wordpress:
+    image: wordpress:php8.2-apache
+    container_name: wp_k3_wordpress
+    user: "1000:1000"  # Nicht-root
+    labels: 
+      # Proxy
+      - "traefik.enable=true"
+      - "traefik.http.routers.wpk3.rule=Host(`api.k3vin-test.ch`)"
+      - "traefik.http.routers.wpk3.entrypoints=websecure"
+      - "traefik.http.routers.wpk3.tls.certresolver=le"
+      - "traefik.http.services.wpk3.loadbalancer.server.port=80"
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+    volumes:
+      - wordpress_uploads:/var/www/html/wp-content/uploads
+      - wordpress_themes:/var/www/html/wp-content/themes:ro # read only zur Laufzeit 
+      - wordpress_plugins:/var/www/html/wp-content/plugins:ro  # read only zur Laufzeit 
+    networks:
+      - wp_k3_network
+      - traefik_proxynet
+    restart: unless-stopped
+
+  db:
+    image: mariadb:latest
+    container_name: wp_k3_db
+    user: "999:999"  # MariaDB User
+    env_file:
+      - .env
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - wp_k3_network
+    restart: unless-stopped
+
+volumes:
+  wordpress_uploads:
+  wordpress_themes:
+  wordpress_plugins:
+  db_data:
+
+networks:
+  wp_k3_network:
+    driver: bridge
+  traefik_proxynet:
+    external: true

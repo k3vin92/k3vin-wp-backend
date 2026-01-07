@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  wordpress:
+    image: wordpress:php8.2-apache
+    container_name: wp_k3_wordpress
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+    volumes:
+      - ./wp-content/uploads:/var/www/html/wp-content/uploads
+      - ./wp-content/themes:/var/www/html/wp-content/themes
+      - ./wp-content/plugins:/var/www/html/wp-content/plugins
+    networks:
+      - wp_k3_network
+    restart: unless-stopped
+
+  db:
+    image: mariadb:latest
+    container_name: wp_k3_db
+    env_file:
+      - .env
+    volumes:
+      - ./db_data:/var/lib/mysql
+    networks:
+      - wp_k3_network
+    restart: unless-stopped
+
+networks:
+  wp_k3_network:
+    driver: bridge
