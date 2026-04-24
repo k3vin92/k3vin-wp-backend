@@ -26,6 +26,11 @@ services:
     networks:
       - wp_k3_network
     restart: unless-stopped
+    # security recommended by WP:
+    command: >
+      --transaction-isolation=READ-COMMITTED
+      --binlog-format=ROW
+      --skip-name-resolve
 
 networks:
   wp_k3_network:

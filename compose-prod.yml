@@ -4,22 +4,27 @@ services:
   wordpress:
     image: wordpress:php8.2-apache
     container_name: wp_k3_wordpress
-    user: "1000:1000"  # Nicht-root
+    user: "33:33"  # Nicht-root
     labels: 
       # Proxy
       - "traefik.enable=true"
-      - "traefik.http.routers.wpk3.rule=Host(`api.k3vin-test.ch`)"
+      - "traefik.docker.network=traefik_proxynet"
+      - "traefik.http.routers.wpk3.rule=Host(`wp.k3vin.ch`)"
       - "traefik.http.routers.wpk3.entrypoints=websecure"
       - "traefik.http.routers.wpk3.tls.certresolver=le"
       - "traefik.http.services.wpk3.loadbalancer.server.port=80"
     env_file:
-      - .env
-    ports:
-      - "80:80"
+      - /opt/secrets/k3vin.ch/.env
+    environment:
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'https://wp.k3vin.ch');
+        define('WP_SITEURL', 'https://wp.k3vin.ch');
+        define('FORCE_SSL_ADMIN', true);
+        if (!empty($$_SERVER['HTTP_X_FORWARDED_PROTO']) && $$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            $$_SERVER['HTTPS']='on';
+        }
     volumes:
-      - wordpress_uploads:/var/www/html/wp-content/uploads
-      - wordpress_themes:/var/www/html/wp-content/themes:ro # read only zur Laufzeit 
-      - wordpress_plugins:/var/www/html/wp-content/plugins:ro  # read only zur Laufzeit 
+      -  wordpress_content:/var/www/html/wp-content
     networks:
       - wp_k3_network
       - traefik_proxynet
@@ -30,17 +35,20 @@ services:
     container_name: wp_k3_db
     user: "999:999"  # MariaDB User
     env_file:
-      - .env
+      - /opt/secrets/k3vin.ch/.env
     volumes:
       - db_data:/var/lib/mysql
     networks:
       - wp_k3_network
     restart: unless-stopped
+    # security recommended by WP:
+    command: >
+      --transaction-isolation=READ-COMMITTED
+      --binlog-format=ROW
+      --skip-name-resolve
 
 volumes:
-  wordpress_uploads:
-  wordpress_themes:
-  wordpress_plugins:
+  wordpress_content:
   db_data:
 
 networks:
